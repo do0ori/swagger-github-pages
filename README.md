@@ -100,8 +100,24 @@ steps:
     branch: swagger-ui-updates
 ```
 
-- peter-evans/create-pull-request action을 사용하여 Swagger UI의 최신 release로 업데이트하는 PR을 생성한다.
+- [peter-evans/create-pull-request](https://github.com/peter-evans/create-pull-request) action을 사용하여 Swagger UI의 최신 release로 업데이트하는 PR을 생성한다.
 - commit message, PR 제목, 본문, label 등을 설정한다.
 - swagger-ui-updates라는 이름의 branch에서 PR을 생성한다.
 
 ![image](https://github.com/do0ori/swagger-github-pages/assets/71831926/b733f86c-f7bc-4e1e-aef8-40b9d5903992)
+
+# 🚀 리포지토리에 적용해보기
+
+1. 이 리포지토리의 .github, dist, index.html, swagger-ui.version을 내 리포지토리로 옮기기
+2. dist/swagger-initializer.js 파일의 `url` 속성을 내 swagger yaml file 경로로 수정
+
+   ```js
+       window.ui = SwaggerUIBundle({
+           url: "swagger.yaml",
+       ...
+   ```
+
+3. 리포지토리에서 Settings > Pages > Branch를 `main`으로 설정하고 Save해서 GitHub Pages를 활성화시키기
+4. `https://{github-username}.github.io/{repository-name}`로 이동하여 Swagger 문서 확인하기
+
+   이 리포지토리의 경우 [https://do0ori.github.io/swagger-github-pages](https://do0ori.github.io/swagger-github-pages)에 hosting되어 있다.
