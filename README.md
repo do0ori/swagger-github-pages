@@ -1,58 +1,107 @@
-# How to host Swagger API documentation with GitHub Pages
-[<img alt="The blog of Peter Evans: How to Host Swagger Documentation With Github Pages" title="View blog post" src="https://peterevans.dev/img/blog-published-badge.svg">](https://peterevans.dev/posts/how-to-host-swagger-docs-with-github-pages/)
+# 🧐 GitHub Actions workflow 분석해보기
 
-This repository is a template for using the [Swagger UI](https://github.com/swagger-api/swagger-ui) to dynamically generate beautiful documentation for your API and host it for free with GitHub Pages.
+> The template will periodically auto-update the Swagger UI dependency and create a pull request. See the [GitHub Actions workflow here](.github/workflows/update-swagger.yml).
 
-The template will periodically auto-update the Swagger UI dependency and create a pull request. See the [GitHub Actions workflow here](.github/workflows/update-swagger.yml).
+이 GitHub Actions workflow는 Swagger UI의 최신 release를 자동으로 업데이트하고 변경 사항을 PR로 생성하는 작업을 수행한다.
 
-The example API specification used by this repository can be seen hosted at [https://peter-evans.github.io/swagger-github-pages](https://peter-evans.github.io/swagger-github-pages/).
+## 1. Trigger 조건
 
-## Steps to use this template
+```yaml
+on:
+  schedule:
+    - cron:  '0 10 * * *'  # 매일 오전 10시에 실행
+  workflow_dispatch:       # 수동으로 실행할 수 있는 옵션
+```
 
-1. Click the `Use this template` button above to create a new repository from this template.
+- `schedule`: 매일 오전 10:00 UTC에 이 workflow가 자동으로 실행된다. ([GitHub Actions schedule 관련 참고 자료](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule))
+- `workflow_dispatch`: GitHub interface를 통해 수동으로 이 workflow를 실행할 수 있다. ([GitHub Actions workflow_dispatch 관련 참고 자료](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch))
 
-2. Go to the settings for your repository at `https://github.com/{github-username}/{repository-name}/settings` and enable GitHub Pages.
+## 2. Job 정의
 
-    ![Headers](/screenshots/swagger-github-pages.png?raw=true)
-    
-3. Browse to the Swagger documentation at `https://{github-username}.github.io/{repository-name}/`.
+```yaml
+jobs:
+  updateSwagger:
+    runs-on: ubuntu-latest
+```
 
+- job의 이름은 `updateSwagger`이고 최신 Ubuntu 이미지를 사용하여 실행된다.
 
-## Steps to manually configure in your own repository
+## 3. Steps
 
-1. Download the latest stable release of the Swagger UI [here](https://github.com/swagger-api/swagger-ui/releases).
+### 1. 코드 checkout
 
-2. Extract the contents and copy the "dist" directory to the root of your repository.
+```yaml
+steps:
+  - uses: actions/checkout@v4
+```
 
-3. Move the file "index.html" from the directory "dist" to the root of your repository.
-    ```
+- 리포지토리의 코드를 앞서 생성된 Ubuntu 가상 머신의 작업 디렉토리로 복사한다.
+- 이제 모든 코드 작업은 여기서 이루어진다.
+
+### 2. 최신 Swagger UI Release 가져오기
+
+```yaml
+- name: Get Latest Swagger UI Release
+  id: swagger-ui
+  run: |
+    release_tag=$(curl -sL https://api.github.com/repos/swagger-api/swagger-ui/releases/latest | jq -r ".tag_name")
+    echo "release_tag=$release_tag" >> $GITHUB_OUTPUT
+    current_tag=$(<swagger-ui.version)
+    echo "current_tag=$current_tag" >> $GITHUB_OUTPUT
+```
+
+- 최신 Swagger UI release tag를 가져와 `release_tag` 변수에 저장한다.
+- [swagger-ui.version](swagger-ui.version) 파일에서 현재 사용 중인 release tag를 읽어 `current_tag` 변수에 저장한다.
+
+### 3. Swagger UI 업데이트
+
+```yaml
+- name: Update Swagger UI
+  if: steps.swagger-ui.outputs.current_tag != steps.swagger-ui.outputs.release_tag
+  env:
+    RELEASE_TAG: ${{ steps.swagger-ui.outputs.release_tag }}
+    SWAGGER_YAML: "swagger.yaml"
+  run: |
+    rm -fr dist index.html
+    curl -sL -o $RELEASE_TAG https://api.github.com/repos/swagger-api/swagger-ui/tarball/$RELEASE_TAG
+    tar -xzf $RELEASE_TAG --strip-components=1 $(tar -tzf $RELEASE_TAG | head -1 | cut -f1 -d"/")/dist
+    rm $RELEASE_TAG
     mv dist/index.html .
-    ```
-    
-4. Copy the YAML specification file for your API to the root of your repository.
+    sed -i "s|https://petstore.swagger.io/v2/swagger.json|$SWAGGER_YAML|g" dist/swagger-initializer.js
+    sed -i "s|href=\"./|href=\"dist/|g" index.html
+    sed -i "s|src=\"./|src=\"dist/|g" index.html
+    sed -i "s|href=\"index|href=\"dist/index|g" index.html
+    echo ${{ steps.swagger-ui.outputs.release_tag }} > swagger-ui.version
+```
 
-5. Edit [dist/swagger-initializer.js](dist/swagger-initializer.js) and change the `url` property to reference your local YAML file. 
-    ```javascript
-        window.ui = SwaggerUIBundle({
-            url: "swagger.yaml",
-        ...
-    ```
-    Then fix any references to files in the "dist" directory.
-    ```html
-    ...
-    <link rel="stylesheet" type="text/css" href="dist/swagger-ui.css" >
-    <link rel="icon" type="image/png" href="dist/favicon-32x32.png" sizes="32x32" />
-    <link rel="icon" type="image/png" href="dist/favicon-16x16.png" sizes="16x16" />    
-    ...
-    <script src="dist/swagger-ui-bundle.js"> </script>
-    <script src="dist/swagger-ui-standalone-preset.js"> </script>    
-    ...
-    ```
-    
-6. Go to the settings for your repository at `https://github.com/{github-username}/{repository-name}/settings` and enable GitHub Pages.
+- 최신 release tag(`release_tag`)와 현재 사용 중인 tag(`current_tag`)가 다를 경우 실행된다.
+- [dist](dist) 디렉토리와 [index.html](index.html) 파일을 삭제한다.
+- 최신 release를 다운로드하고 압축 해제하여 dist 디렉토리를 추출한다.
+- dist/index.html을 root 디렉토리로 옮긴다.
+- dist/swagger-initializer.js와 index.html 파일의 경로와 참조를 수정한다.
+- 새로운 release tag(`release_tag`)를 [swagger-ui.version](swagger-ui.version) 파일에 저장한다.
 
-    ![Headers](/screenshots/swagger-github-pages.png?raw=true)
-    
-7. Browse to the Swagger documentation at `https://{github-username}.github.io/{repository-name}/`.
+### 4. Pull Request 생성
 
-   The example API specification used by this repository can be seen hosted at [https://peter-evans.github.io/swagger-github-pages](https://peter-evans.github.io/swagger-github-pages/).
+```yaml
+- name: Create Pull Request
+  uses: peter-evans/create-pull-request@v6
+  with:
+    commit-message: Update swagger-ui to ${{ steps.swagger-ui.outputs.release_tag }}
+    title: Update SwaggerUI to ${{ steps.swagger-ui.outputs.release_tag }}
+    body: |
+      Updates [swagger-ui][1] to ${{ steps.swagger-ui.outputs.release_tag }}
+
+      Auto-generated by [create-pull-request][2]
+
+      [1]: https://github.com/swagger-api/swagger-ui
+      [2]: https://github.com/peter-evans/create-pull-request
+    labels: dependencies, automated pr
+    branch: swagger-ui-updates
+```
+
+- peter-evans/create-pull-request action을 사용하여 Swagger UI의 최신 release로 업데이트하는 PR을 생성한다.
+- commit message, PR 제목, 본문, label 등을 설정한다.
+- swagger-ui-updates라는 이름의 branch에서 PR을 생성한다.
+
+![image](https://github.com/do0ori/swagger-github-pages/assets/71831926/b733f86c-f7bc-4e1e-aef8-40b9d5903992)
