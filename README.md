@@ -118,6 +118,7 @@ steps:
 # 🚀 리포지토리에 적용해보기
 
 1. 이 리포지토리의 .github, dist, index.html, swagger-ui.version을 내 리포지토리로 옮기기
+
 2. dist/swagger-initializer.js 파일의 `url` 속성을 내 swagger yaml file 경로로 수정
 
    ```js
@@ -126,7 +127,18 @@ steps:
        ...
    ```
 
-3. 리포지토리에서 Settings > Pages > Branch를 `main`으로 설정하고 Save해서 GitHub Pages를 활성화시키기
-4. `https://{github-username}.github.io/{repository-name}`로 이동하여 Swagger 문서 확인하기
+3. .github/workflows/update-swagger.yml 파일의 `SWAGGER_YAML` env 값을 내 swagger yaml file 경로로 수정
+
+   ```yaml
+   env:
+     RELEASE_TAG: ${{ steps.swagger-ui.outputs.release_tag }}
+     SWAGGER_YAML: "swagger.yaml"
+   ```
+
+   ⚠️ 기존에 있던 다른 workflow들의 동작을 고려하여 적당한 수정이 필요할 수 있음
+
+4. 리포지토리에서 Settings > Pages > Branch를 `main`으로 설정하고 Save해서 GitHub Pages를 활성화시키기
+
+5. `https://{github-username}.github.io/{repository-name}`로 이동하여 Swagger 문서 확인하기
 
    이 리포지토리의 경우 [https://do0ori.github.io/swagger-github-pages](https://do0ori.github.io/swagger-github-pages)에 hosting되어 있다.
