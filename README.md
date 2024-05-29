@@ -1,6 +1,15 @@
+# 📑 목차
+
+- [GitHub Actions workflow 분석해보기](#-github-actions-workflow-분석해보기)
+- [리포지토리에 적용해보기](#-리포지토리에-적용해보기)
+
+---
+
 # 🧐 GitHub Actions workflow 분석해보기
 
-> The template will periodically auto-update the Swagger UI dependency and create a pull request. See the [GitHub Actions workflow here](https://github.com/peter-evans/swagger-github-pages/blob/master/.github/workflows/update-swagger.yml).
+> The template will periodically auto-update the Swagger UI dependency and create a pull request.
+> <br>
+> See the [GitHub Actions workflow here](https://github.com/peter-evans/swagger-github-pages/blob/master/.github/workflows/update-swagger.yml).
 
 이 GitHub Actions workflow는 Swagger UI의 최신 release를 자동으로 업데이트하고 변경 사항을 PR로 생성하는 작업을 수행한다.
 
